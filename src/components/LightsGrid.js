@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { savePresetToFirebase, getPresetById, getPublicPresets } from '../services/firebaseService';
+// Firebase imports temporarily removed
+// import { savePresetToFirebase, getPresetById, getPublicPresets } from '../services/firebaseService';
 
-// Presets can be stored in both local storage and Firebase
+// Presets stored in local storage only
 
 const LightsGrid = () => {
   // Grid state
@@ -15,41 +16,24 @@ const LightsGrid = () => {
   const [customPresets, setCustomPresets] = useState({});
   const [presetName, setPresetName] = useState('');
   const [presetDescription, setPresetDescription] = useState('');
-  const [publicPresets, setPublicPresets] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [shareableLink, setShareableLink] = useState('');
-  const [isShared, setIsShared] = useState(false);
+  // Temporarily removed Firebase-related state
+  // const [publicPresets, setPublicPresets] = useState({});
+  // const [isLoading, setIsLoading] = useState(false);
   
   // Local storage key for custom presets
   const CUSTOM_PRESETS_STORAGE_KEY = 'colregs-custom-presets';
   
-  // Load custom presets from local storage and check for shared preset
+  // Load custom presets from local storage only
   useEffect(() => {
     const savedPresets = localStorage.getItem(CUSTOM_PRESETS_STORAGE_KEY);
     if (savedPresets) {
       setCustomPresets(JSON.parse(savedPresets));
     }
     
-    // Check URL for shared preset ID
-    const params = new URLSearchParams(window.location.search);
-    const sharedPresetId = params.get('preset');
-    
-    if (sharedPresetId) {
-      loadSharedPreset(sharedPresetId);
-    }
-    
-    // Load public presets if in student mode
-    if (activePresetTab === 'student') {
-      loadPublicPresets();
-    }
+    // Note: Firebase integration for loading shared presets has been removed temporarily
   }, []);
   
-  // Load public presets when switching to student mode
-  useEffect(() => {
-    if (activePresetTab === 'student') {
-      loadPublicPresets();
-    }
-  }, [activePresetTab]);
+  // Firebase-related useEffect removed
   
   // Initialize grid lights
   useEffect(() => {
@@ -102,8 +86,8 @@ const LightsGrid = () => {
     );
   };
 
-  // Save current pattern as a custom preset
-  const saveCustomPreset = async (shareOnline = false) => {
+  // Save current pattern as a custom preset (local storage only)
+  const saveCustomPreset = () => {
     if (!presetName.trim()) {
       alert('Please enter a name for your preset');
       return;
@@ -140,91 +124,19 @@ const LightsGrid = () => {
     setCustomPresets(updatedPresets);
     localStorage.setItem(CUSTOM_PRESETS_STORAGE_KEY, JSON.stringify(updatedPresets));
     
-    // Reset shareable link and shared status
-    setShareableLink('');
-    setIsShared(false);
-
-    // If sharing online, save to Firebase
-    if (shareOnline) {
-      try {
-        setIsLoading(true);
-        const firebaseId = await savePresetToFirebase(newPreset);
-        setIsLoading(false);
-        
-        // Create shareable link
-        const shareUrl = `${window.location.origin}${window.location.pathname}?preset=${firebaseId}`;
-        setShareableLink(shareUrl);
-        setIsShared(true);
-        
-        // Show confirmation with shareable link
-        alert(`Preset shared successfully! It has been added to the public gallery.`);
-      } catch (error) {
-        setIsLoading(false);
-        alert(`Error sharing preset: ${error.message}`);
-      }
-    } else {
-      // Show confirmation for local saving only
-      alert('Preset saved successfully!');
-    }
+    // Show confirmation for local saving only
+    alert('Preset saved successfully!');
 
     // Reset form fields
     setPresetName('');
     setPresetDescription('');
-  };
-  
-  // Load public presets from Firebase
-  const loadPublicPresets = async () => {
-    try {
-      setIsLoading(true);
-      const presets = await getPublicPresets();
-      
-      // Convert array to object with ID as key
-      const presetsObject = presets.reduce((acc, preset) => {
-        acc[preset.id] = preset;
-        return acc;
-      }, {});
-      
-      setPublicPresets(presetsObject);
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Error loading public presets:', error);
-      setIsLoading(false);
-    }
-  };
-  
-  // Load a shared preset by ID
-  const loadSharedPreset = async (presetId) => {
-    try {
-      setIsLoading(true);
-      const preset = await getPresetById(presetId);
-      
-      if (preset) {
-        // Select the preset for display
-        setSelectedPreset(preset);
-        setShowPreset(true);
-        
-        // Scroll to the preset grid section
-        setTimeout(() => {
-          const gridSection = document.querySelector('.grid-side');
-          if (gridSection) {
-            gridSection.scrollIntoView({ behavior: 'smooth' });
-          }
-        }, 500);
-      }
-      
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Error loading shared preset:', error);
-      setIsLoading(false);
-      alert('Error loading the shared preset. It may no longer exist.');
-    }
   };
 
   // Delete a custom preset
   const deleteCustomPreset = (presetId, e) => {
     // Prevent click from propagating to parent elements
     if (e) e.stopPropagation();
-    
+
     if (window.confirm('Are you sure you want to delete this preset?')) {
       const updatedPresets = { ...customPresets };
       delete updatedPresets[presetId];
@@ -241,18 +153,11 @@ const LightsGrid = () => {
     }
   };
 
-  // Select a preset for comparison
+  // Select a preset for comparison (local storage only)
   const selectPresetForComparison = (presetId) => {
     // Check if preset is in local storage
     if (customPresets[presetId]) {
       setSelectedPreset(customPresets[presetId]);
-      setShowPreset(true);
-      return;
-    }
-    
-    // Check if preset is in Firebase public presets
-    if (publicPresets[presetId]) {
-      setSelectedPreset(publicPresets[presetId]);
       setShowPreset(true);
       return;
     }
@@ -350,46 +255,12 @@ const LightsGrid = () => {
                 />
               </div>
               
-              <div className="save-buttons">
-                <button 
-                  className="save-preset-button"
-                  onClick={() => saveCustomPreset(false)}
-                  disabled={isLoading}
-                >
-                  Save Locally
-                </button>
-                
-                <button 
-                  className="share-preset-button"
-                  onClick={() => saveCustomPreset(true)}
-                  disabled={isLoading}
-                >
-                  {isLoading ? 'Sharing...' : 'Share Online'}
-                </button>
-              </div>
-              
-              {shareableLink && (
-                <div className="shareable-link-container">
-                  <label>Shareable Link:</label>
-                  <div className="link-input-group">
-                    <input 
-                      type="text" 
-                      value={shareableLink} 
-                      readOnly 
-                      className="shareable-link-input"
-                    />
-                    <button 
-                      className="copy-link-button"
-                      onClick={() => {
-                        navigator.clipboard.writeText(shareableLink);
-                        alert('Link copied to clipboard!');
-                      }}
-                    >
-                      Copy
-                    </button>
-                  </div>
-                </div>
-              )}
+              <button 
+                className="save-preset-button"
+                onClick={saveCustomPreset}
+              >
+                Save Current Pattern
+              </button>
             </div>
           )}
         </div>
@@ -534,25 +405,26 @@ const LightsGrid = () => {
           <h3 className="carousel-title">{activePresetTab === 'teacher' ? 'Manage Saved Presets' : 'Available Presets'}</h3>
           
           <div className="preset-carousel">
-            {isLoading ? (
-              <div className="loading-indicator">Loading presets...</div>
-            ) : activePresetTab === 'teacher' ? (
-              // TEACHER MODE - Show local presets
-              Object.keys(customPresets).length === 0 ? (
-                <p className="no-presets">No presets saved yet. Create your first preset!</p>
-              ) : (
-                <div className="preset-items-scroll">
-                  {Object.keys(customPresets).map(presetId => (
-                    <div 
-                      key={presetId} 
-                      className={`preset-carousel-item ${selectedPreset && selectedPreset.id === presetId ? 'selected' : ''}`}
-                      onClick={() => selectPresetForComparison(presetId)}
-                    >
-                      <div className="preset-info">
-                        <h5>{customPresets[presetId].name}</h5>
-                        <p>{customPresets[presetId].description}</p>
-                      </div>
-                      <div className="preset-actions">
+            {Object.keys(customPresets).length === 0 ? (
+              <p className="no-presets">
+                {activePresetTab === 'teacher' 
+                  ? 'No presets saved yet. Create your first preset!' 
+                  : 'No presets available. Ask your teacher to create some presets.'}
+              </p>
+            ) : (
+              <div className="preset-items-scroll">
+                {Object.keys(customPresets).map(presetId => (
+                  <div 
+                    key={presetId} 
+                    className={`preset-carousel-item ${selectedPreset && selectedPreset.id === presetId ? 'selected' : ''}`}
+                    onClick={() => selectPresetForComparison(presetId)}
+                  >
+                    <div className="preset-info">
+                      <h5>{customPresets[presetId].name}</h5>
+                      <p>{customPresets[presetId].description}</p>
+                    </div>
+                    <div className="preset-actions">
+                      {activePresetTab === 'teacher' && (
                         <button 
                           onClick={(e) => deleteCustomPreset(presetId, e)}
                           className="delete-preset-button"
@@ -560,43 +432,23 @@ const LightsGrid = () => {
                         >
                           Delete
                         </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )
-            ) : (
-              // STUDENT MODE - Show public presets from Firebase
-              Object.keys(publicPresets).length === 0 ? (
-                <p className="no-presets">No public presets available yet.</p>
-              ) : (
-                <div className="preset-items-scroll">
-                  {Object.keys(publicPresets).map(presetId => (
-                    <div 
-                      key={presetId} 
-                      className={`preset-carousel-item ${selectedPreset && selectedPreset.id === presetId ? 'selected' : ''}`}
-                      onClick={() => selectPresetForComparison(presetId)}
-                    >
-                      <div className="preset-info">
-                        <h5>{publicPresets[presetId].name}</h5>
-                        <p>{publicPresets[presetId].description}</p>
-                      </div>
-                      <div className="preset-actions">
+                      )}
+                      {activePresetTab === 'student' && (
                         <button 
                           className="select-preset-button"
                           onClick={(e) => {
                             e.stopPropagation();
                             selectPresetForComparison(presetId);
                           }}
-                          title={publicPresets[presetId].description}
+                          title={customPresets[presetId].description}
                         >
                           Select
                         </button>
-                      </div>
+                      )}
                     </div>
-                  ))}
-                </div>
-              )
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>
